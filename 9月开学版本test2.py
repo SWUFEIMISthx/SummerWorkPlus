@@ -485,7 +485,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
 
         # 绑定事件处理器
 
-        # 绑定“浏览”按钮，点击后列出公司
+        # 绑定“刷新”按钮，点击后列出公司
         browse_button.click(
             list_companies,
             inputs=save_path_textbox,
