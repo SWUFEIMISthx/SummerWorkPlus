@@ -6,9 +6,8 @@ import requests
 from pdfplumber import open as pdf_open
 
 # 创建下载存放文件夹-->当前文件夹下
-path = os.getcwd()
-default_download_path = os.path.join(path, r"F:\\GraduateLearn0_Prelearn\\暑期实训\\暑期实训_plus\\savelist")
 # 定义全局变量 save_path 为你的默认下载路径
+default_download_path = r"D:\暑期实训（雏鹰计划）\baocun"
 save_path = default_download_path  # 可以在这里修改为其他路径，如果需要的话
 
 if not os.path.exists(default_download_path):
@@ -337,14 +336,13 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
         # 定义一个变量来存储所有文件路径
         all_files = gr.State([])
 
-
         def on_submit(save_path, exchange, company_name):
             # 检查用户是否提供了保存路径
             if not save_path.strip():
                 save_path = default_download_path  # 使用默认路径
-                message = "未指定保存路径，使用默认路径: <code>{}</code>".format(default_download_path)
+                message = f"未指定保存路径，使用默认路径: <code>{default_download_path}</code>"
             else:
-                message = "文件将保存在: <code>{}</code>".format(save_path)
+                message = f"文件将保存在: <code>{save_path}</code>"
 
             # 调用 display_files 函数获取所有文件路径
             file_list, additional_message, files = display_files(exchange, company_name, save_path)
@@ -354,7 +352,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
             file_names = [os.path.basename(f) + " (已提取标签信息)" for f in txt_files]
             return file_list, gr.update(choices=file_names), gr.update(value=None), gr.update(
                 value=None), message + "<br>" + additional_message, txt_files
-
 
         def update_tags(selected_file, all_files):
             selected_file_path = None
@@ -370,7 +367,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
             else:
                 return gr.update(choices=[]), gr.update(value=None)
 
-
         def show_selected_tag_content(selected_tag, selected_file, all_files):
             selected_file_path = None
             for file_path in all_files:
@@ -383,8 +379,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
                 content = show_tag_content(selected_tag, selected_file_path)
                 return content
             else:
-                return ""
-
+                return "无法找到文件或标签内容。"
 
         # 绑定事件处理器
         submit_button.click(on_submit, [save_path_textbox, exchange_dropdown, company_name_textbox],
@@ -392,7 +387,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
                              all_files])
         file_dropdown.change(update_tags, [file_dropdown, all_files], [tag_dropdown, tag_content_area])
         tag_dropdown.change(show_selected_tag_content, [tag_dropdown, file_dropdown, all_files], tag_content_area)
-
 
         # 清除所有组件的内容
         def clear_all():
@@ -412,7 +406,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
                 gr.update(value=None)
             )
 
-
         # 绑定 Clear 按钮的事件处理器
         clear_button.click(clear_all, outputs=[
             exchange_dropdown,
@@ -431,67 +424,94 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
         with gr.Row():
             # 创建左侧列，包含下拉菜单和输入框
             with gr.Column(scale=1, variant='panel'):
-                # 使用 gr.Row 和 variant='compact' 来控制组件的垂直居中
                 with gr.Row(variant='compact'):
                     company_dropdown = gr.Dropdown([], label="选择公司")
                 with gr.Row(variant='compact'):
                     file_dropdown_browse = gr.Dropdown([], label="选择文件")
                 with gr.Row(variant='compact'):
                     tag_dropdown_browse = gr.Dropdown([], label="选择标签")
-                # 创建提交按钮，并使用 gr.Row 控制垂直居中
                 with gr.Row(variant='compact'):
-                    browse_button = gr.Button("浏览")
+                    browse_button = gr.Button("刷新")
 
             # 创建右侧列，包含输出组件
             with gr.Column(scale=2):
-                # 创建输出组件
                 tag_content_area_browse = gr.TextArea(label="标签内容")
 
         # 定义一个变量来存储所有公司文件夹路径
         all_companies = gr.State([])
 
-
         def list_companies(save_path):
             if not save_path.strip():
                 save_path = default_download_path  # 使用默认路径
+            if not os.path.exists(save_path):
+                return gr.update(choices=[]), "保存路径不存在。"
             companies = [d for d in os.listdir(save_path) if os.path.isdir(os.path.join(save_path, d))]
-            return gr.update(choices=companies)
-
+            if not companies:
+                return gr.update(choices=[]), "未找到任何公司文件夹。"
+            return gr.update(choices=companies), "公司列表已更新。"
 
         def list_files(selected_company, save_path):
             if not save_path.strip():
                 save_path = default_download_path  # 使用默认路径
             company_path = os.path.join(save_path, selected_company)
+            if not os.path.exists(company_path):
+                return gr.update(choices=[]), "公司文件夹不存在。"
             files = [f for f in os.listdir(company_path) if f.endswith('.txt')]
-            return gr.update(choices=files)
-
+            if not files:
+                return gr.update(choices=[]), "未找到任何txt文件。"
+            return gr.update(choices=files), "文件列表已更新。"
 
         def update_tags_browse(selected_file, selected_company, save_path):
             if not save_path.strip():
                 save_path = default_download_path  # 使用默认路径
             file_path = os.path.join(save_path, selected_company, selected_file)
+            if not os.path.exists(file_path):
+                return gr.update(choices=[]), "文件不存在。"
             tags = extract_tags(file_path)
-            return gr.update(choices=tags), gr.update(value=None)
-
+            if not tags:
+                return gr.update(choices=[]), "未找到任何标签。"
+            return gr.update(choices=tags), "标签列表已更新。"
 
         def show_selected_tag_content_browse(selected_tag, selected_file, selected_company, save_path):
             if not save_path.strip():
                 save_path = default_download_path  # 使用默认路径
             file_path = os.path.join(save_path, selected_company, selected_file)
+            if not os.path.exists(file_path):
+                return "文件不存在。"
             content = show_tag_content(selected_tag, file_path)
+            if not content:
+                return "标签内容未找到。"
             return content
 
-
         # 绑定事件处理器
-        company_dropdown.change(list_files, [company_dropdown, save_path_textbox], file_dropdown_browse)
-        file_dropdown_browse.change(update_tags_browse, [file_dropdown_browse, company_dropdown, save_path_textbox],
-                                    [tag_dropdown_browse, tag_content_area_browse])
-        tag_dropdown_browse.change(show_selected_tag_content_browse,
-                                   [tag_dropdown_browse, file_dropdown_browse, company_dropdown, save_path_textbox],
-                                   tag_content_area_browse)
 
-        # 初始化公司列表
-        company_dropdown.change(list_companies, save_path_textbox, company_dropdown)
+        # 绑定“浏览”按钮，点击后列出公司
+        browse_button.click(
+            list_companies,
+            inputs=save_path_textbox,
+            outputs=[company_dropdown, tag_content_area_browse]  # 也可以返回一个状态消息
+        )
+
+        # 当选择公司时，更新文件下拉框
+        company_dropdown.change(
+            list_files,
+            inputs=[company_dropdown, save_path_textbox],
+            outputs=[file_dropdown_browse, tag_content_area_browse]  # 也可以返回一个状态消息
+        )
+
+        # 当选择文件时，更新标签下拉框
+        file_dropdown_browse.change(
+            update_tags_browse,
+            inputs=[file_dropdown_browse, company_dropdown, save_path_textbox],
+            outputs=[tag_dropdown_browse, tag_content_area_browse]  # 也可以返回一个状态消息
+        )
+
+        # 当选择标签时，显示标签内容
+        tag_dropdown_browse.change(
+            show_selected_tag_content_browse,
+            inputs=[tag_dropdown_browse, file_dropdown_browse, company_dropdown, save_path_textbox],
+            outputs=tag_content_area_browse
+        )
 
     with gr.Tab("与大模型交互(测试中)"):
         with gr.Row():
@@ -501,14 +521,12 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
         # 创建一个按钮来触发问答
         qa_button = gr.Button("询问")
 
-
         def qa_handler(question):
             answer = get_answer_from_model(question)
             return answer
 
-
         # 绑定问答按钮的事件处理器
         qa_button.click(qa_handler, inputs=[question_input], outputs=[answer_output])
 
-    if __name__ == "__main__":
-        demo.launch(share=True)  # 设置 share=True 以便创建公共链接
+    # 启动 Gradio 应用
+    demo.launch()  # 设置 share=True 以便创建公共链接（如需要）
