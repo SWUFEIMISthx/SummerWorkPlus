@@ -66,13 +66,12 @@ def extract_and_save_questions_and_replies(filename, company_name, disclosure_ti
         \Z)                              # 或者是文件的结尾
     )
     '''
-    # pattern = r'(\n问题[\s、\d一二三四五六七八九十].*|\n问询问题)(\n回答.*?|\n回复.*?|\n【回复】.*?|\n问题回复.*?|\n【发行人.*?)(?=\n问题|$|\n问询问题)'
     matches = re.findall(pattern, content, flags=re.DOTALL | re.VERBOSE)
 
     # 处理每一部分
     for index, match in enumerate(matches, start=1):
         question = match[0].strip()
-        answer = match[1].strip()
+        answer = match[2].strip()
         # 在标签后添加换行符
         questions.append(f"<Question{index}>\n{question}\n</Question{index}>\n\n")
         answers.append(f"<Answer{index}>\n{answer}\n</Answer{index}>\n\n")
@@ -518,8 +517,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
         with gr.Row():
             question_input = gr.Textbox(label="输入您的问题")
             answer_output = gr.Textbox(label="答案")
-
-
 
         # 创建一个按钮来触发问答
         qa_button = gr.Button("询问")
