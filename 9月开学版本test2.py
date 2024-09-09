@@ -1,7 +1,9 @@
-import gradio as gr
+import csv
 import json
 import os
 import re
+
+import gradio as gr
 import requests
 from pdfplumber import open as pdf_open
 
@@ -252,6 +254,20 @@ def extract_tags(file_path):
                 tags.append(match.group())
     return tags
 
+# 修正：定义一个函数来提取标签和内容
+def extract_tags_and_content(file_path):
+    tags_content = {}
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # 使用正则表达式找到所有标签及其内容
+    tag_pattern = re.compile(r'<([^>]+)>\n(.*?)\n</\1>', re.DOTALL)
+    for match in tag_pattern.finditer(content):
+        tag = match.group(1)
+        content = match.group(2).strip()
+        tags_content[tag] = content
+
+    return tags_content
 
 def show_tag_content(tag, file_path):
     """根据给定的标签显示对应的内容"""
@@ -296,6 +312,25 @@ def get_answer_from_model(question):
 #     content = show_tag_content(selected_tag, file_path)
 #     return content
 
+# 修正：定义转换 TXT 到 CSV 的函数
+def convert_txt_to_csv(txt_file_path, output_dir):
+    # 构建 CSV 文件的路径
+    csv_file_path = os.path.splitext(txt_file_path)[0] + '.csv'
+    csv_file_path = os.path.join(output_dir, os.path.basename(csv_file_path))
+
+    # 提取标签和内容
+    tags_content = extract_tags_and_content(txt_file_path)
+
+    # 写入 CSV 文件
+    with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        # 写入列名
+        writer.writerow(tags_content.keys())
+        # 写入内容
+        writer.writerow(tags_content.values())
+
+    return csv_file_path
+
 
 # 创建 Blocks 应用
 with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
@@ -332,6 +367,9 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
                 tag_dropdown = gr.Dropdown([], label="选择标签")
                 tag_content_area = gr.TextArea(label="标签内容")
                 status_message_html = gr.HTML(label="状态消息")
+                # 新增：添加转换为 CSV 的按钮
+                convert_csv_button = gr.Button("转换为CSV文件")
+
 
         # 定义一个变量来存储所有文件路径
         all_files = gr.State([])
@@ -380,6 +418,19 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
                 return content
             else:
                 return "无法找到文件或标签内容。"
+
+            # 新增：定义一个事件处理器来处理转换操作
+        def on_convert_to_csv(all_files):
+            # 过滤出所有的 TXT 文件
+            txt_files = [file for file in all_files if file.endswith('.txt')]
+            # 调用转换函数
+            csv_files = [convert_txt_to_csv(file, os.path.dirname(file)) for file in txt_files]
+            return '\n'.join(os.path.basename(f) for f in csv_files), "转换完成"
+
+        # 绑定按钮的事件处理器
+        convert_csv_button.click(on_convert_to_csv, inputs=[all_files],
+                                     outputs=[file_list_textarea, status_message_html])
+
 
         # 绑定事件处理器
         submit_button.click(on_submit, [save_path_textbox, exchange_dropdown, company_name_textbox],
@@ -517,7 +568,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=['Roboto', 'sans-serif'])) as demo:
         with gr.Row():
             question_input = gr.Textbox(label="输入您的问题")
             answer_output = gr.Textbox(label="答案")
-
         # 创建一个按钮来触发问答
         qa_button = gr.Button("询问")
 
